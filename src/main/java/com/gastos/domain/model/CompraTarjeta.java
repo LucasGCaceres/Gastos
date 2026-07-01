@@ -47,6 +47,10 @@ public class CompraTarjeta {
     @Column(name = "cantidad_cuotas", nullable = false)
     private Integer cantidadCuotas;
 
+    @Column(name = "cuotas_ya_abonadas", nullable = false)
+    @Builder.Default
+    private Integer cuotasYaAbonadas = 0;
+
     @OneToMany(mappedBy = "compra", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<CuotaImputada> cuotas = new ArrayList<>();
