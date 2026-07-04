@@ -193,6 +193,9 @@ public class CalculadoraService {
             throw new IllegalStateException("Esta calculadora no tiene un gasto fijo vinculado");
         }
         BigDecimal total = calcularTotal(calc);
+        // Si el gasto fijo vinculado había quedado desactivado, reactivarlo: de lo contrario
+        // el total recalculado se guarda pero queda invisible en los ciclos (findByActivoTrue lo excluye).
+        gastoFijoService.activar(calc.getGastoFijo().getId());
         gastoFijoService.editar(calc.getGastoFijo().getId(),
                 new CrearGastoFijoRequest(calc.getGastoFijo().getNombre(), total));
         return toResponse(get(id));

@@ -1,5 +1,6 @@
 package com.gastos.controller;
 
+import com.gastos.dto.request.ActualizarEstadoGastoFijoRequest;
 import com.gastos.dto.request.CrearGastoFijoRequest;
 import com.gastos.dto.response.GastoFijoResponse;
 import com.gastos.service.GastoFijoService;
@@ -45,5 +46,11 @@ public class GastoFijoController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void desactivar(@PathVariable Long id) {
         gastoFijoService.desactivar(id);
+    }
+
+    @PatchMapping("/{id}/estado")
+    public GastoFijoResponse actualizarEstado(@PathVariable Long id,
+                                               @Valid @RequestBody ActualizarEstadoGastoFijoRequest req) {
+        return gastoFijoService.actualizarEstado(id, req.activo());
     }
 }

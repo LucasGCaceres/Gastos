@@ -1,6 +1,7 @@
 package com.gastos.service;
 
 import com.gastos.domain.enums.EstadoCiclo;
+import com.gastos.domain.enums.TipoCalculadora;
 import com.gastos.domain.model.*;
 import com.gastos.domain.repository.*;
 import com.gastos.dto.request.ActualizarIngresosRequest;
@@ -8,6 +9,7 @@ import com.gastos.dto.request.CrearCicloRequest;
 import com.gastos.dto.response.CicloListItemResponse;
 import com.gastos.dto.response.CicloResumenResponse;
 import com.gastos.dto.response.CuotaImputadaResponse;
+import com.gastos.dto.response.EventoGastoResponse;
 import com.gastos.dto.response.GastoVariableResponse;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +29,8 @@ public class CicloMensualService {
     private final GastoFijoSnapshotRepository snapshotRepo;
     private final GastoVariableRepository gastoVariableRepo;
     private final CuotaImputadaRepository cuotaRepo;
+    private final CalculadoraRepository calculadoraRepo;
+    private final EventoGastoRepository eventoGastoRepo;
 
     @Transactional(readOnly = true)
     public List<CicloListItemResponse> listarTodos() {
@@ -71,6 +75,8 @@ public class CicloMensualService {
                 .findByAnioImpactoAndMesImpacto(ciclo.getAnio(), ciclo.getMes()).stream()
                 .map(this::mapCuota)
                 .toList();
+        List<CicloResumenResponse.GastoEsperadoItemResponse> gastosEsperados = resolverGastosEsperados(ciclo);
+        List<EventoGastoResponse> eventos = resolverEventos(ciclo);
 
         // Calcular totales en vivo — los campos del ciclo son cache eventual, no fuente de verdad
         BigDecimal totalFijos = fijos.stream()
@@ -78,7 +84,8 @@ public class CicloMensualService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal totalVariables = variables.stream()
                 .map(GastoVariableResponse::monto)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .add(totalEventos(eventos));
         BigDecimal totalCuotas = cuotas.stream()
                 .map(CuotaImputadaResponse::montoEnPesos)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -92,7 +99,23 @@ public class CicloMensualService {
                 ciclo.getFechaCierreReal(),
                 ciclo.getTotalIngresos(), totalFijos, totalVariables,
                 totalCuotas, saldoFinal,
-                fijos, variables, cuotas);
+                fijos, variables, cuotas, gastosEsperados, eventos);
+    }
+
+    /**
+     * Calculadoras de tipo AHORRO con un objetivo en USD cargado ("Guardar") representan un
+     * gasto esperado/proyectado para el ciclo abierto: todavía no es un GastoVariable real
+     * (eso ocurre recién al "Efectivizar"), así que no se computa en ningún total — el
+     * equivalente en pesos lo recalcula el cliente con la cotización vigente.
+     */
+    private List<CicloResumenResponse.GastoEsperadoItemResponse> resolverGastosEsperados(CicloMensual ciclo) {
+        if (ciclo.getEstado() != EstadoCiclo.ABIERTO) return List.of();
+        return calculadoraRepo.findByActivaTrueOrderByNombreAsc().stream()
+                .filter(c -> c.getTipo() == TipoCalculadora.AHORRO && c.getAhorro() != null)
+                .filter(c -> c.getAhorro().getObjetivoUsd().compareTo(BigDecimal.ZERO) > 0)
+                .map(c -> new CicloResumenResponse.GastoEsperadoItemResponse(
+                        c.getId(), c.getNombre(), c.getAhorro().getObjetivoUsd()))
+                .toList();
     }
 
     @Transactional
@@ -152,7 +175,8 @@ public class CicloMensualService {
         BigDecimal totalFijos = resolverTotalFijos(ciclo);
         BigDecimal totalVariables = gastoVariableRepo.findByCicloMensual(ciclo).stream()
                 .map(GastoVariable::getMonto)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .add(totalEventos(resolverEventos(ciclo)));
         BigDecimal totalCuotas = cuotaRepo
                 .findByAnioImpactoAndMesImpacto(ciclo.getAnio(), ciclo.getMes()).stream()
                 .map(CuotaImputada::getMontoEnPesos)
@@ -213,6 +237,26 @@ public class CicloMensualService {
         return gastoFijoRepo.findByActivoTrue().stream()
                 .map(f -> new CicloResumenResponse.GastoFijoItemResponse(f.getId(), f.getNombre(), f.getMontoActual()))
                 .toList();
+    }
+
+    private List<EventoGastoResponse> resolverEventos(CicloMensual ciclo) {
+        return eventoGastoRepo.findByCicloMensualOrderByIdDesc(ciclo).stream()
+                .map(evento -> {
+                    List<EventoGastoResponse.ItemResponse> items = evento.getItems().stream()
+                            .map(i -> new EventoGastoResponse.ItemResponse(i.getId(), i.getConcepto(), i.getMonto()))
+                            .toList();
+                    BigDecimal total = evento.getItems().stream()
+                            .map(EventoGastoItem::getMonto)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    return new EventoGastoResponse(evento.getId(), evento.getNombre(), evento.getFecha(), total, items);
+                })
+                .toList();
+    }
+
+    private BigDecimal totalEventos(List<EventoGastoResponse> eventos) {
+        return eventos.stream()
+                .map(EventoGastoResponse::total)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private CuotaImputadaResponse mapCuota(CuotaImputada c) {

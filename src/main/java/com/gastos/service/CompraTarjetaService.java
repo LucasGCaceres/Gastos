@@ -1,11 +1,13 @@
 package com.gastos.service;
 
+import com.gastos.domain.enums.EstadoCuota;
 import com.gastos.domain.enums.Moneda;
 import com.gastos.domain.model.CompraTarjeta;
 import com.gastos.domain.model.CuotaImputada;
 import com.gastos.domain.model.TarjetaCredito;
 import com.gastos.domain.repository.CompraTarjetaRepository;
 import com.gastos.domain.repository.CicloMensualRepository;
+import com.gastos.domain.repository.CuotaImputadaRepository;
 import com.gastos.domain.repository.TarjetaCreditoRepository;
 import com.gastos.dto.request.RegistrarCompraRequest;
 import com.gastos.dto.response.CompraTarjetaResponse;
@@ -26,6 +28,7 @@ public class CompraTarjetaService {
     private final CompraTarjetaRepository compraRepo;
     private final TarjetaCreditoRepository tarjetaRepo;
     private final CicloMensualRepository cicloRepo;
+    private final CuotaImputadaRepository cuotaRepo;
     private final CuotaGeneratorService cuotaGenerator;
     private final CicloMensualService cicloService;
 
@@ -54,6 +57,7 @@ public class CompraTarjetaService {
                 .cuotasYaAbonadas(yaAbonadas)
                 .build();
 
+        cuotaGenerator.validarCoherenciaCuotasAbonadas(compra);
         List<CuotaImputada> cuotas = cuotaGenerator.generarCuotas(compra);
         compra.getCuotas().addAll(cuotas);
 
@@ -110,6 +114,7 @@ public class CompraTarjetaService {
         compra.setCantidadCuotas(req.cantidadCuotas());
         compra.setCuotasYaAbonadas(yaAbonadas);
 
+        cuotaGenerator.validarCoherenciaCuotasAbonadas(compra);
         List<CuotaImputada> nuevasCuotas = cuotaGenerator.generarCuotas(compra);
         compra.getCuotas().addAll(nuevasCuotas);
         CompraTarjeta saved = compraRepo.save(compra);
@@ -146,6 +151,20 @@ public class CompraTarjetaService {
         ciclosAfectados.forEach(am ->
                 cicloRepo.findByAnioAndMes(am[0], am[1])
                         .ifPresent(ciclo -> cicloService.recalcularTotales(ciclo.getId())));
+    }
+
+    @Transactional
+    public CuotaImputadaResponse actualizarEstadoCuota(Long cuotaId, EstadoCuota estado) {
+        CuotaImputada cuota = cuotaRepo.findById(cuotaId)
+                .orElseThrow(() -> new EntityNotFoundException("Cuota no encontrada: " + cuotaId));
+        cuota.setEstado(estado);
+        CuotaImputada saved = cuotaRepo.save(cuota);
+        CompraTarjeta compra = saved.getCompra();
+        return new CuotaImputadaResponse(
+                saved.getId(), compra.getId(), compra.getTarjeta().getId(),
+                compra.getConcepto(), compra.getTarjeta().getNombre(),
+                saved.getNumeroCuota(), compra.getCantidadCuotas(),
+                saved.getMontoEnPesos(), saved.getMesImpacto(), saved.getAnioImpacto(), saved.getEstado());
     }
 
     @Transactional(readOnly = true)

@@ -25,36 +25,48 @@ public class CuotaGeneratorService {
     /**
      * Genera la lista de cuotas proyectadas para una compra.
      * No persiste — el llamador es responsable de guardar junto a la CompraTarjeta.
+     * Solo genera las cuotas pendientes (numeroCuota > cuotasYaAbonadas); si la compra
+     * ya está totalmente abonada (cuotasYaAbonadas == cantidadCuotas) no genera ninguna,
+     * evitando proyectar cuotas "fantasma" hacia ciclos futuros.
      */
     public List<CuotaImputada> generarCuotas(CompraTarjeta compra) {
+        YearMonth mesPrimeraCuota = calcularMesPrimeraCuota(compra);
+        int yaAbonadas = compra.getCuotasYaAbonadas() != null ? compra.getCuotasYaAbonadas() : 0;
+        int nroCuotaInicio = yaAbonadas + 1;
+        return distribuirCuotas(compra, mesPrimeraCuota, nroCuotaInicio);
+    }
+
+    /**
+     * Valida que las cuotas ya abonadas sean coherentes con la fecha de compra: la última
+     * cuota declarada como abonada no puede caer en un mes futuro respecto de hoy, porque
+     * eso significaría que el usuario dice haber pagado algo que todavía no venció, dejando
+     * un registro "fantasma" que aparecería de golpe en un ciclo futuro.
+     */
+    public void validarCoherenciaCuotasAbonadas(CompraTarjeta compra) {
+        int yaAbonadas = compra.getCuotasYaAbonadas() != null ? compra.getCuotasYaAbonadas() : 0;
+        if (yaAbonadas == 0) return;
+
+        YearMonth mesPrimeraCuota = calcularMesPrimeraCuota(compra);
+        YearMonth mesUltimaAbonada = mesPrimeraCuota.plusMonths(yaAbonadas - 1);
+
+        if (mesUltimaAbonada.isAfter(YearMonth.now())) {
+            throw new IllegalArgumentException(
+                    "Cuotas ya abonadas inconsistentes con la fecha de compra: la cuota "
+                            + yaAbonadas + " recién vencería en " + mesUltimaAbonada
+                            + ", todavía no pudo haber sido pagada");
+        }
+    }
+
+    private YearMonth calcularMesPrimeraCuota(CompraTarjeta compra) {
         LocalDate fechaCompra = compra.getFechaCompra();
         TarjetaCredito tarjeta = compra.getTarjeta();
 
         LocalDate fechaCierre = resolverFechaCierre(tarjeta, fechaCompra.getYear(), fechaCompra.getMonthValue());
 
         // Regla de salto: si la compra es después del cierre, la cuota 1 cae el mes siguiente
-        YearMonth mesPrimeraCuota = fechaCompra.isAfter(fechaCierre)
+        return fechaCompra.isAfter(fechaCierre)
                 ? YearMonth.of(fechaCompra.getYear(), fechaCompra.getMonth()).plusMonths(1)
                 : YearMonth.of(fechaCompra.getYear(), fechaCompra.getMonth());
-
-        int yaAbonadas = compra.getCuotasYaAbonadas() != null ? compra.getCuotasYaAbonadas() : 0;
-
-        // Cuando hay cuotas pre-pagadas, el usuario está registrando una compra pasada.
-        // La "fecha de compra" ya representa el mes desde donde el sistema debe trackear,
-        // sin aplicar el salto-de-cierre (ese se aplica solo para compras nuevas sin abonadas).
-        YearMonth mesEfectivo;
-        if (yaAbonadas == 0) {
-            mesEfectivo = mesPrimeraCuota; // usa la lógica de cierre calculada arriba
-        } else {
-            // Compra pasada: el mes ingresado es el punto de partida; yaAbonadas indica
-            // cuántas cuotas anteriores ya ocurrieron. El próximo mes es mes + yaAbonadas.
-            mesEfectivo = YearMonth.of(fechaCompra.getYear(), fechaCompra.getMonth())
-                    .plusMonths(yaAbonadas);
-        }
-
-        // Si yaAbonadas == cantidadCuotas, se registra la cuota final en el mes actual
-        int nroCuotaInicio = Math.min(yaAbonadas + 1, compra.getCantidadCuotas());
-        return distribuirCuotas(compra, mesEfectivo, nroCuotaInicio);
     }
 
     /**
@@ -82,10 +94,10 @@ public class CuotaGeneratorService {
      * La última cuota absorbe el centavo de diferencia por redondeo.
      */
     /**
-     * @param mesPrimero  mes donde cae la primera cuota a imputar en el sistema
+     * @param mesPrimeraCuota  mes donde cae la cuota número 1 (antes de descontar abonadas)
      * @param nroCuotaInicio  número de la primera cuota a generar (1 si no hay abonadas, 2 si ya abonó 1, etc.)
      */
-    private List<CuotaImputada> distribuirCuotas(CompraTarjeta compra, YearMonth mesPrimero, int nroCuotaInicio) {
+    private List<CuotaImputada> distribuirCuotas(CompraTarjeta compra, YearMonth mesPrimeraCuota, int nroCuotaInicio) {
         int totalCuotas = compra.getCantidadCuotas();
         int cuotasAGenerar = totalCuotas - (nroCuotaInicio - 1);
         if (cuotasAGenerar <= 0) return new ArrayList<>();
@@ -96,7 +108,7 @@ public class CuotaGeneratorService {
         BigDecimal montoUltima = total.subtract(montoCuota.multiply(BigDecimal.valueOf(totalCuotas - 1)));
 
         List<CuotaImputada> cuotas = new ArrayList<>(cuotasAGenerar);
-        YearMonth mesActual = mesPrimero;
+        YearMonth mesActual = mesPrimeraCuota.plusMonths(nroCuotaInicio - 1);
 
         for (int i = nroCuotaInicio; i <= totalCuotas; i++) {
             BigDecimal monto = (i == totalCuotas) ? montoUltima : montoCuota;

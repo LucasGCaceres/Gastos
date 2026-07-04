@@ -1,7 +1,9 @@
 package com.gastos.controller;
 
+import com.gastos.dto.request.ActualizarEstadoCuotaRequest;
 import com.gastos.dto.request.RegistrarCompraRequest;
 import com.gastos.dto.response.CompraTarjetaResponse;
+import com.gastos.dto.response.CuotaImputadaResponse;
 import com.gastos.service.CompraTarjetaService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +33,12 @@ public class CompraTarjetaController {
     @PutMapping("/{id}")
     public CompraTarjetaResponse editar(@PathVariable Long id, @Valid @RequestBody RegistrarCompraRequest req) {
         return compraService.editarCompra(id, req);
+    }
+
+    @PatchMapping("/cuotas/{cuotaId}/estado")
+    public CuotaImputadaResponse actualizarEstadoCuota(@PathVariable Long cuotaId,
+                                                         @Valid @RequestBody ActualizarEstadoCuotaRequest req) {
+        return compraService.actualizarEstadoCuota(cuotaId, req.estado());
     }
 
     @GetMapping("/tarjeta/{tarjetaId}")

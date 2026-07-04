@@ -15,12 +15,17 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -45,7 +50,7 @@ class CuotaGeneratorServiceTest {
                 .build();
 
         // Por defecto no hay override real de fechas
-        when(cierreTarjetaMesRepository.findByTarjetaAndAnioAndMes(any(), any(), any()))
+        lenient().when(cierreTarjetaMesRepository.findByTarjetaAndAnioAndMes(any(), any(), any()))
                 .thenReturn(Optional.empty());
     }
 
@@ -187,6 +192,67 @@ class CuotaGeneratorServiceTest {
         List<CuotaImputada> cuotas = service.generarCuotas(compra);
 
         assertThat(cuotas.get(0).getMesImpacto()).isEqualTo(2);
+    }
+
+    // ── Cuotas ya abonadas ───────────────────────────────────────────────────
+
+    @Test
+    void cuotasYaAbonadasIgualATotal_noGeneraCuotasFantasma() {
+        // Compra vieja, ya se pagaron las 5 cuotas → nada que proyectar a futuro
+        CompraTarjeta compra = compraBuilder(LocalDate.now().minusMonths(6), 5)
+                .cuotasYaAbonadas(5)
+                .build();
+
+        List<CuotaImputada> cuotas = service.generarCuotas(compra);
+
+        assertThat(cuotas).isEmpty();
+    }
+
+    @Test
+    void cuotasYaAbonadasParcial_respetaSaltoDeCierreDeLaCompra() {
+        // Compra el 25 de junio (cierre el 20 → cuota 1 en julio), 3 ya abonadas
+        // → cuota 1 julio, cuota 2 agosto, cuota 3 septiembre → próxima pendiente: octubre
+        CompraTarjeta compra = compraBuilder(LocalDate.of(2026, 6, 25), 12)
+                .cuotasYaAbonadas(3)
+                .build();
+
+        List<CuotaImputada> cuotas = service.generarCuotas(compra);
+
+        assertThat(cuotas.get(0).getNumeroCuota()).isEqualTo(4);
+        assertThat(cuotas.get(0).getMesImpacto()).isEqualTo(10);
+        assertThat(cuotas.get(0).getAnioImpacto()).isEqualTo(2026);
+    }
+
+    // ── Validación de coherencia de fechas ──────────────────────────────────
+
+    @Test
+    void cuotasYaAbonadasConFechaFutura_esIncoherente() {
+        // Compra "hoy" declarando cuotas ya abonadas que todavía no pudieron vencer
+        CompraTarjeta compra = compraBuilder(LocalDate.now(), 5)
+                .cuotasYaAbonadas(5)
+                .build();
+
+        assertThatThrownBy(() -> service.validarCoherenciaCuotasAbonadas(compra))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("inconsistentes");
+    }
+
+    @Test
+    void cuotasYaAbonadasConFechaCoherente_noLanzaExcepcion() {
+        CompraTarjeta compra = compraBuilder(LocalDate.now().minusMonths(6), 5)
+                .cuotasYaAbonadas(5)
+                .build();
+
+        assertThatCode(() -> service.validarCoherenciaCuotasAbonadas(compra))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void sinCuotasAbonadas_validacionSiempreOk() {
+        CompraTarjeta compra = compraBuilder(LocalDate.now(), 5).build();
+
+        assertThatCode(() -> service.validarCoherenciaCuotasAbonadas(compra))
+                .doesNotThrowAnyException();
     }
 
     // ── Helper ────────────────────────────────────────────────────────────────
