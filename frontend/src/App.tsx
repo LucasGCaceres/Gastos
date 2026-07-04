@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout'
+import RequireAuth from './components/RequireAuth'
+import LoginPage from './pages/LoginPage'
 import CiclosPage from './pages/CiclosPage'
 import CicloDetallePage from './pages/CicloDetallePage'
 import TarjetasPage from './pages/TarjetasPage'
@@ -9,11 +11,14 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route element={<Layout />}>
-          <Route path="/" element={<CiclosPage />} />
-          <Route path="/ciclos/:id" element={<CicloDetallePage />} />
-          <Route path="/tarjetas" element={<TarjetasPage />} />
-          <Route path="/calculadoras" element={<CalculadorasPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route element={<RequireAuth />}>
+          <Route element={<Layout />}>
+            <Route path="/" element={<CiclosPage />} />
+            <Route path="/ciclos/:id" element={<CicloDetallePage />} />
+            <Route path="/tarjetas" element={<TarjetasPage />} />
+            <Route path="/calculadoras" element={<CalculadorasPage />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>

@@ -1,14 +1,14 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/gastos_db
-    username: postgres
-    password: ***REMOVED***
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/gastos_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:}
     driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
       ddl-auto: validate
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         format_sql: true
@@ -25,3 +25,11 @@ server:
     encoding:
       charset: UTF-8
       force: true
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:}
+    expiration-days: ${JWT_EXPIRATION_DAYS:30}
+  admin:
+    username: ${ADMIN_USERNAME:}
+    password: ${ADMIN_PASSWORD:}

@@ -1,8 +1,9 @@
 import { useRef, useState, useEffect } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useTheme } from '../hooks/useTheme'
 import { resetearDB } from '../api/ciclos'
 import { useToast } from './Toast'
+import { useAuth } from '../context/AuthContext'
 
 function GearIcon() {
   return (
@@ -35,10 +36,17 @@ function MoonIcon() {
 export default function Layout() {
   const { theme, toggle } = useTheme()
   const { success, error } = useToast()
+  const { username, logout } = useAuth()
+  const navigate = useNavigate()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login', { replace: true })
+  }
 
   // Cierra el panel si se clickea afuera
   useEffect(() => {
@@ -102,6 +110,16 @@ export default function Layout() {
               <SunIcon />
               <span style={{ marginLeft: 2 }}>{theme === 'dark' ? 'Oscuro' : 'Claro'}</span>
             </label>
+
+            <hr className="settings-divider" />
+
+            <span className="settings-panel-title">Sesión</span>
+            <p className="text-muted" style={{ fontSize: 11, marginBottom: 8 }}>
+              Conectado como <strong style={{ color: 'var(--text)' }}>{username}</strong>
+            </p>
+            <button className="btn btn-ghost btn-sm" style={{ width: '100%' }} onClick={handleLogout}>
+              Cerrar sesión
+            </button>
 
             <hr className="settings-divider" />
 
