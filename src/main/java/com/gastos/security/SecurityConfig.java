@@ -44,7 +44,10 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
-                        .anyRequest().authenticated())
+                        .requestMatchers("/api/**").authenticated()
+                        // Todo lo demás es el frontend estático (index.html, JS, CSS) —
+                        // público a propósito: los datos reales siempre van por /api/**, protegido arriba.
+                        .anyRequest().permitAll())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(
                         (request, response, authException) ->
                                 response.sendError(401, "No autenticado")))

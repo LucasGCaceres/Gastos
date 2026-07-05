@@ -44,3 +44,6 @@ logs/
 
 ### Configuración local (no subir credenciales) ###
 application-local.yml
+
+### Frontend compilado embebido en el backend (artefacto generado, ver scripts/build-desktop.bat) ###
+src/main/resources/static/
