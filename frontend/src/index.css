@@ -76,7 +76,7 @@ button { cursor: pointer; font: inherit; border: none; }
 input, select, textarea { font: inherit; }
 
 /* ── Layout ─────────────────────────────────────────────────────────────── */
-.app-layout { display: flex; min-height: 100vh; }
+.app-layout { display: flex; height: 100vh; }
 
 .sidebar {
   width: 200px;
@@ -87,7 +87,8 @@ input, select, textarea { font: inherit; }
   display: flex;
   flex-direction: column;
   gap: 2px;
-  min-height: 100vh;
+  height: 100vh;
+  overflow-y: auto;
 }
 
 .sidebar-title {
@@ -437,22 +438,6 @@ td.text-right { text-align: right; }
 .sidebar-settings-btn:hover { background: var(--bg-hover); color: var(--text-muted); }
 .sidebar-settings-btn.active { color: var(--accent); background: var(--accent-dim); }
 
-.settings-panel {
-  position: absolute;
-  bottom: 60px;
-  left: 12px;
-  width: 200px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  z-index: 200;
-  animation: slideUp 0.18s cubic-bezier(0.34,1.56,0.64,1);
-}
 .settings-panel-title {
   font-size: 10px;
   font-weight: 700;

@@ -6,6 +6,7 @@ import CiclosPage from './pages/CiclosPage'
 import CicloDetallePage from './pages/CicloDetallePage'
 import TarjetasPage from './pages/TarjetasPage'
 import CalculadorasPage from './pages/CalculadorasPage'
+import ConfiguracionPage from './pages/ConfiguracionPage'
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
             <Route path="/ciclos/:id" element={<CicloDetallePage />} />
             <Route path="/tarjetas" element={<TarjetasPage />} />
             <Route path="/calculadoras" element={<CalculadorasPage />} />
+            <Route path="/configuracion" element={<ConfiguracionPage />} />
           </Route>
         </Route>
       </Routes>
