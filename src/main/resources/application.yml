@@ -1,4 +1,8 @@
 spring:
+  main:
+    lazy-initialization: true
+  jmx:
+    enabled: false
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/gastos_db}
     username: ${DB_USERNAME:postgres}
