@@ -7,8 +7,12 @@ import CicloDetallePage from './pages/CicloDetallePage'
 import TarjetasPage from './pages/TarjetasPage'
 import CalculadorasPage from './pages/CalculadorasPage'
 import ConfiguracionPage from './pages/ConfiguracionPage'
+import { useTheme } from './hooks/useTheme'
 
 export default function App() {
+  // Aplica el tema guardado apenas arranca la app, sin depender de qué página se monte primero.
+  useTheme()
+
   return (
     <BrowserRouter>
       <Routes>
