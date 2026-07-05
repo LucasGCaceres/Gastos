@@ -1,6 +1,7 @@
 package com.gastos.controller;
 
 import com.gastos.dto.request.CambiarPasswordRequest;
+import com.gastos.dto.request.CambiarUsernameRequest;
 import com.gastos.dto.request.LoginRequest;
 import com.gastos.dto.response.LoginResponse;
 import com.gastos.service.AuthService;
@@ -26,5 +27,10 @@ public class AuthController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void cambiarPassword(Authentication authentication, @Valid @RequestBody CambiarPasswordRequest req) {
         authService.cambiarPassword(authentication.getName(), req);
+    }
+
+    @PatchMapping("/username")
+    public LoginResponse cambiarUsername(Authentication authentication, @Valid @RequestBody CambiarUsernameRequest req) {
+        return authService.cambiarUsername(authentication.getName(), req);
     }
 }

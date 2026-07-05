@@ -1,11 +1,12 @@
 package com.gastos.controller;
 
-import com.gastos.domain.repository.CategoriaRepository;
+import com.gastos.dto.request.CrearCategoriaRequest;
 import com.gastos.dto.response.CategoriaResponse;
+import com.gastos.service.CategoriaService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -14,12 +15,27 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CategoriaController {
 
-    private final CategoriaRepository categoriaRepo;
+    private final CategoriaService categoriaService;
 
     @GetMapping
     public List<CategoriaResponse> listar() {
-        return categoriaRepo.findAll().stream()
-                .map(c -> new CategoriaResponse(c.getId(), c.getNombre(), c.getIcono()))
-                .toList();
+        return categoriaService.listar();
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public CategoriaResponse crear(@Valid @RequestBody CrearCategoriaRequest req) {
+        return categoriaService.crear(req);
+    }
+
+    @PatchMapping("/{id}")
+    public CategoriaResponse editar(@PathVariable Long id, @Valid @RequestBody CrearCategoriaRequest req) {
+        return categoriaService.editar(id, req);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void eliminar(@PathVariable Long id) {
+        categoriaService.eliminar(id);
     }
 }

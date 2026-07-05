@@ -2,6 +2,7 @@ package com.gastos.service;
 
 import com.gastos.domain.repository.UsuarioRepository;
 import com.gastos.dto.request.CambiarPasswordRequest;
+import com.gastos.dto.request.CambiarUsernameRequest;
 import com.gastos.dto.request.LoginRequest;
 import com.gastos.dto.response.LoginResponse;
 import com.gastos.security.JwtService;
@@ -44,5 +45,25 @@ public class AuthService {
 
         usuario.setPasswordHash(passwordEncoder.encode(req.newPassword()));
         usuarioRepo.save(usuario);
+    }
+
+    @Transactional
+    public LoginResponse cambiarUsername(String username, CambiarUsernameRequest req) {
+        var usuario = usuarioRepo.findByUsername(username)
+                .orElseThrow(() -> new EntityNotFoundException("Usuario no encontrado: " + username));
+
+        if (!passwordEncoder.matches(req.currentPassword(), usuario.getPasswordHash())) {
+            throw new BadCredentialsException("La contraseña actual no es correcta");
+        }
+
+        if (!req.newUsername().equals(username) && usuarioRepo.findByUsername(req.newUsername()).isPresent()) {
+            throw new IllegalStateException("Ya existe un usuario con ese nombre");
+        }
+
+        usuario.setUsername(req.newUsername());
+        usuarioRepo.save(usuario);
+
+        String token = jwtService.generarToken(usuario.getUsername());
+        return new LoginResponse(token, usuario.getUsername());
     }
 }

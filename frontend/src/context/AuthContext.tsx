@@ -8,6 +8,7 @@ interface AuthCtx {
   isAuthenticated: boolean
   login: (username: string, password: string) => Promise<void>
   logout: () => void
+  setSession: (token: string, username: string) => void
 }
 
 const Ctx = createContext<AuthCtx | null>(null)
@@ -29,8 +30,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUsername(null)
   }, [])
 
+  const setSession = useCallback((t: string, u: string) => {
+    setStoredAuth(t, u)
+    setToken(t)
+    setUsername(u)
+  }, [])
+
   return (
-    <Ctx.Provider value={{ token, username, isAuthenticated: !!token, login, logout }}>
+    <Ctx.Provider value={{ token, username, isAuthenticated: !!token, login, logout, setSession }}>
       {children}
     </Ctx.Provider>
   )

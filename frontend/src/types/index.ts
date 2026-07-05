@@ -80,6 +80,7 @@ export interface CicloResumen {
 export interface Categoria {
   id: number
   nombre: string
+  icono: string | null
 }
 
 export interface Tarjeta {
