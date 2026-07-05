@@ -3,17 +3,14 @@ setlocal
 
 set "APP_DIR=%~dp0.."
 set "JAR=%APP_DIR%\target\gastos-0.0.1-SNAPSHOT.jar"
+set "LOG=%APP_DIR%\gastos.log"
 
 if not exist "%JAR%" (
-    echo No se encontro %JAR%
-    echo Corre primero scripts\build-desktop.bat para compilar la app.
-    pause
+    mshta "javascript:alert('No se encontro el jar de Gastos. Corre scripts\build-desktop.bat primero.');close();"
     exit /b 1
 )
 
-title Gastos
-echo Iniciando Gastos...
-start "" /min java -Dspring.profiles.active=local -jar "%JAR%"
+start "" javaw -Dspring.profiles.active=local -jar "%JAR%" >> "%LOG%" 2>&1
 
 REM Espera a que el backend levante antes de abrir el navegador
 :esperar
